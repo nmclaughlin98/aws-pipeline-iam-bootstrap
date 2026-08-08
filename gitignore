@@ -1,0 +1,36 @@
+
+# Dependencies
+node_modules/
+yarn.lock
+
+# Build outputs
+*.js
+*.d.ts
+!bin/app.js  # If you want to commit compiled output
+!jest.config.js  # If using Jest
+
+# CDK
+cdk.out/
+.cdk.staging/
+
+# TypeScript
+*.js.map
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# AWS
+.aws/
+
+# OS
+Thumbs.db
