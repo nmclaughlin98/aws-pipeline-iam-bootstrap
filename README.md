@@ -65,7 +65,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: us-east-1
+          aws-region: eu-west-2
           role-to-assume: arn:aws:iam::334624057595:role/testion-retail-github-deploy-role
           role-chaining: true
 

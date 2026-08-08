@@ -9,7 +9,7 @@ new PipelineIamStack(app, 'AwsPipelineIamBootstrapStack', {
   config: defaultConfig,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT || '334624057595',
-    region: process.env.CDK_DEFAULT_REGION || 'us-east-1',
+    region: process.env.CDK_DEFAULT_REGION || 'eu-west-2',
   },
 });
 
