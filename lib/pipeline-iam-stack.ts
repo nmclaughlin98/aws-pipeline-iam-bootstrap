@@ -1,7 +1,12 @@
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-import { PipelineBootstrapConfig } from './config';
+import {
+    DeployPermission,
+    PipelineBootstrapConfig,
+    RepositoryConfig,
+    StaticUserConfig,
+} from './config';
 
 export interface PipelineIamStackProps extends cdk.StackProps {
     config: PipelineBootstrapConfig;
@@ -13,48 +18,60 @@ export class PipelineIamStack extends cdk.Stack {
 
         const { config } = props;
 
-        // 1. Create or reference GitHub OIDC Provider
         const githubProvider = new iam.OpenIdConnectProvider(this, 'GitHubOidcProvider', {
             url: 'https://token.actions.githubusercontent.com',
             clientIds: ['sts.amazonaws.com'],
         });
 
-        // 2. Provision OIDC deployment roles for each allowed GitHub repository
         config.allowedRepositories.forEach((repoConfig) => {
             const sanitizedRepoName = repoConfig.repo.replace(/[^a-zA-Z0-9]/g, '-');
-            const roleId = `DeployRole-${sanitizedRepoName}`;
-            const roleName = repoConfig.roleName || `gh-deploy-${sanitizedRepoName}`;
-            const repoNameOnly = repoConfig.repo.split('/')[1];
+            const roleName = repoConfig.roleName;
+            const [ownerName, repoNameOnly] = repoConfig.repo.split('/');
 
-            const deployRole = new iam.Role(this, roleId, {
+            const deployRole = new iam.Role(this, `DeployRole-${sanitizedRepoName}`, {
                 roleName,
-                description: `Deployment role for GitHub Actions pipeline in repo ${repoConfig.repo}`,
+                description: `GitHub Actions deploy role for ${repoConfig.repo}`,
                 assumedBy: new iam.OpenIdConnectPrincipal(githubProvider, {
                     StringEquals: {
                         'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
                     },
                     StringLike: {
                         'token.actions.githubusercontent.com:sub': [
-                            // Classic format (older repos / fallback)
                             `repo:${repoConfig.repo}:*`,
-                            // Immutable format (repos created on/after ~15 July 2026)
-                            `repo:nmclaughlin98@${repoConfig.ownerId}/${repoNameOnly}@${repoConfig.repoId}:*`,
+                            `repo:${ownerName}@${repoConfig.ownerId}/${repoNameOnly}@${repoConfig.repoId}:*`,
                         ],
                     },
                 }),
             });
 
-            // 3. Grant permission to assume CDK bootstrap roles
-            deployRole.addToPolicy(
+            this.grantPermissions(deployRole, repoConfig.permissions, repoConfig.seedTables);
+
+            new cdk.CfnOutput(this, `RoleArn-${sanitizedRepoName}`, {
+                value: deployRole.roleArn,
+                description: `Deployment role ARN for ${repoConfig.repo}`,
+            });
+        });
+
+        (config.staticUsers ?? []).forEach((userConfig) => {
+            const user = iam.User.fromUserName(this, `User-${userConfig.userName}`, userConfig.userName);
+            this.grantPermissions(user, userConfig.permissions, userConfig.seedTables);
+        });
+    }
+
+    private grantPermissions(
+        principal: iam.IPrincipal,
+        permissions: DeployPermission[],
+        seedTables?: string[]
+    ): void {
+        if (permissions.includes('cdk-deploy')) {
+            principal.addToPrincipalPolicy(
                 new iam.PolicyStatement({
                     effect: iam.Effect.ALLOW,
                     actions: ['sts:AssumeRole'],
                     resources: [`arn:aws:iam::${this.account}:role/cdk-hnb659fds-*`],
                 })
             );
-
-            // 4. Grant permission to read CDK SSM version parameter
-            deployRole.addToPolicy(
+            principal.addToPrincipalPolicy(
                 new iam.PolicyStatement({
                     effect: iam.Effect.ALLOW,
                     actions: ['ssm:GetParameter'],
@@ -63,31 +80,31 @@ export class PipelineIamStack extends cdk.Stack {
                     ],
                 })
             );
+        }
 
-            // Output Role ARN
-            new cdk.CfnOutput(this, `RoleArn-${sanitizedRepoName}`, {
-                value: deployRole.roleArn,
-                description: `Deployment Role ARN for ${repoConfig.repo}`,
-            });
-        });
+        if (permissions.includes('dynamodb-seed')) {
+            const tables = seedTables ?? [];
+            if (tables.length === 0) {
+                throw new Error('dynamodb-seed requires at least one table in seedTables');
+            }
 
-        // 5. Also configure policy for legacy/static IAM deployment user
-        const deployUser = iam.User.fromUserName(this, 'DeployUser', 'testion-retail-deployment-user');
-        deployUser.addToPrincipalPolicy(
-            new iam.PolicyStatement({
-                effect: iam.Effect.ALLOW,
-                actions: ['sts:AssumeRole'],
-                resources: [`arn:aws:iam::${this.account}:role/cdk-hnb659fds-*`],
-            })
-        );
-        deployUser.addToPrincipalPolicy(
-            new iam.PolicyStatement({
-                effect: iam.Effect.ALLOW,
-                actions: ['ssm:GetParameter'],
-                resources: [
-                    `arn:aws:ssm:${this.region}:${this.account}:parameter/cdk-bootstrap/hnb659fds/*`,
-                ],
-            })
-        );
+            const tableArns = tables.flatMap((tableName) => [
+                `arn:aws:dynamodb:${this.region}:${this.account}:table/${tableName}`,
+                `arn:aws:dynamodb:${this.region}:${this.account}:table/${tableName}/index/*`,
+            ]);
+
+            principal.addToPrincipalPolicy(
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    actions: [
+                        'dynamodb:BatchWriteItem',
+                        'dynamodb:PutItem',
+                        'dynamodb:UpdateItem',
+                        'dynamodb:DescribeTable',
+                    ],
+                    resources: tableArns,
+                })
+            );
+        }
     }
 }
