@@ -26,12 +26,11 @@ export const defaultConfig: PipelineBootstrapConfig = {
       ownerId: '43157431',
       repoId: '1323645756',
     },
-    // Add additional repositories here as needed, e.g.:
-    // {
-    //   repo: 'nmclaughlin98/another-backend-service',
-    //   roleName: 'another-backend-deploy-role',
-    //   ownerId: '43157431',
-    //   repoId: 'XXXXXXXXXX',
-    // },
+    {
+      repo: 'nmclaughlin98/blockbuster-theatre-backend',
+      roleName: 'blockbuster-theatre-backend-github-deploy-role',
+      ownerId: '43157431',
+      repoId: '1323645756',
+    },
   ],
 };

@@ -27,8 +27,8 @@ export const defaultConfig: PipelineBootstrapConfig = {
       roleName: 'testion-retail-github-deploy-role',
     },
     {
-      repo: 'nmclaughlin98/my-new-service-backend',
-      roleName: 'my-new-service-github-deploy-role',
+      repo: 'nmclaughlin98/blockbuster-theatre-backend',
+      roleName: 'blockbuster-theatre-backend-deploy-role',
     },
   ],
 };
@@ -60,7 +60,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
