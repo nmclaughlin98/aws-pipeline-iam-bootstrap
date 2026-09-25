@@ -30,7 +30,7 @@ export const defaultConfig: PipelineBootstrapConfig = {
       repo: 'nmclaughlin98/blockbuster-theatre-backend',
       roleName: 'blockbuster-theatre-backend-github-deploy-role',
       ownerId: '43157431',
-      repoId: '1323645756',
+      repoId: '1388093480',
     },
   ],
 };
