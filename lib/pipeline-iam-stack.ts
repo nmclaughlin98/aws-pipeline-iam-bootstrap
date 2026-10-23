@@ -23,6 +23,34 @@ export class PipelineIamStack extends cdk.Stack {
             clientIds: ['sts.amazonaws.com'],
         });
 
+        const sharedRoleConfig = config.sharedGitHubRole;
+        const sharedDeployRole = new iam.Role(this, 'SharedGitHubDeployRole', {
+            roleName: sharedRoleConfig.roleName,
+            description: `GitHub Actions deploy role for repositories under ${sharedRoleConfig.owner}`,
+            assumedBy: new iam.OpenIdConnectPrincipal(githubProvider, {
+                StringEquals: {
+                    'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+                },
+                StringLike: {
+                    'token.actions.githubusercontent.com:sub': [
+                        `repo:${sharedRoleConfig.owner}/*`,
+                        `repo:${sharedRoleConfig.owner}@${sharedRoleConfig.ownerId}/*`,
+                    ],
+                },
+            }),
+        });
+
+        this.grantPermissions(
+            sharedDeployRole,
+            sharedRoleConfig.permissions,
+            sharedRoleConfig.seedTables
+        );
+
+        new cdk.CfnOutput(this, 'SharedGitHubDeployRoleArn', {
+            value: sharedDeployRole.roleArn,
+            description: `Shared GitHub Actions deploy role for repositories under ${sharedRoleConfig.owner}`,
+        });
+
         config.allowedRepositories.forEach((repoConfig) => {
             const sanitizedRepoName = repoConfig.repo.replace(/[^a-zA-Z0-9]/g, '-');
             const roleName = repoConfig.roleName;

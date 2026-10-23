@@ -21,14 +21,35 @@ export interface StaticUserConfig {
   seedTables?: string[];
 }
 
+export interface SharedGitHubRoleConfig {
+  /** GitHub user or organization that owns the repositories allowed to deploy */
+  owner: string;
+  /** Numeric GitHub owner ID — used to match immutable OIDC sub claims */
+  ownerId: string;
+  /** IAM role name shared by all repositories under owner */
+  roleName: string;
+  permissions: DeployPermission[];
+  /** DynamoDB tables every trusted repository may seed */
+  seedTables?: string[];
+}
+
 export interface PipelineBootstrapConfig {
   account?: string;
   region?: string;
+  sharedGitHubRole: SharedGitHubRoleConfig;
+  /** Existing per-repository roles, retained while workflows migrate to sharedGitHubRole */
   allowedRepositories: RepositoryConfig[];
   staticUsers?: StaticUserConfig[];
 }
 
 export const defaultConfig: PipelineBootstrapConfig = {
+  sharedGitHubRole: {
+    owner: 'nmclaughlin98',
+    ownerId: '43157431',
+    roleName: 'github-actions-deploy-role',
+    permissions: ['cdk-deploy', 'dynamodb-seed'],
+    seedTables: ['TestionRetail', 'blockbuster-theatre-movies'],
+  },
   allowedRepositories: [
     {
       repo: 'nmclaughlin98/testion-retail-backend',
