@@ -46,6 +46,14 @@ export const defaultConfig: PipelineBootstrapConfig = {
       permissions: ['cdk-deploy', 'dynamodb-seed'],
       seedTables: ['blockbuster-theatre-movies'],
     },
+    {
+      repo: 'nmclaughlin98/blockbuster-theatre-chatbot',
+      roleName: 'blockbuster-theatre-chatbot-github-deploy-role',
+      ownerId: '43157431',
+      repoId: '1430416422',
+      permissions: ['cdk-deploy', 'dynamodb-seed'],
+      seedTables: ['blockbuster-theatre-movies'],
+    }
   ],
   staticUsers: [
     {
